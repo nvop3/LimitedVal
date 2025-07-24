@@ -13,11 +13,12 @@ async function fetchAllLimitedIds() {
   do {
     // Required query params
     const params = new URLSearchParams({
-      Category:    "12",        // Category 12 == Limiteds
-      CreatorType: "All",       // must be present
-      Keyword:     "",          // must be present (empty = no keyword filter)
-      SortType:    "3",         // sort by recent average price desc
-      Limit:       limit.toString()
+      Category:        "12",  // Limited items
+      CreatorType:     "All", // must include
+      CreatorTargetId: "0",   // must include, even if 0
+      Keyword:         "",    // must include (empty = no keyword filter)
+      SortType:        "3",   // by recent avg price desc
+      Limit:           limit.toString()
     });
     if (cursor) {
       params.set("Cursor", cursor);
@@ -48,7 +49,10 @@ async function fetchAllLimitedIds() {
 (async () => {
   try {
     const allIds = await fetchAllLimitedIds();
-    fs.writeFileSync("assetPrices.json", JSON.stringify(allIds, null, 2));
+    fs.writeFileSync(
+      "assetPrices.json",
+      JSON.stringify(allIds, null, 2)
+    );
     console.log(`✅ Seeded ${Object.keys(allIds).length} limited IDs`);
   } catch (err) {
     console.error("❌", err.message);
