@@ -1,12 +1,12 @@
-name: Update Lowest‐Ask Prices
+name: Refresh Limited IDs & Prices
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '0 * * * *'    # every hour
-  workflow_dispatch:      # manual trigger
+    - cron: '0 0 * * *'    # daily at midnight UTC
+  workflow_dispatch:
 
 jobs:
   update:
@@ -20,9 +20,12 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install node-fetch@2
 
-      - name: Run price updater
+      - name: Seed limited IDs from Rolimons
+        run: node extractIDs.js
+
+      - name: Fetch latest lowest‐ask prices
         run: node updatePrices.js
 
       - name: Commit & push changes
@@ -30,5 +33,5 @@ jobs:
         with:
           author_name: github-actions
           author_email: github-actions@github.com
-          message: "chore: update lowest‐ask prices via Roblox API"
+          message: "chore: seed IDs & update lowest‐ask prices"
           push: true
