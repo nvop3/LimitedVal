@@ -1,25 +1,26 @@
 // updatePrices.js
 const fs    = require("fs");
 const path  = require("path");
-const fetch = require("node-fetch");  // or remove this line if you rely on Node18+ global fetch
+const fetch = require("node-fetch");
 
-// Query Roblox Economy for lowest ask price
+// Fetch the lowest ask price for a single asset from Roblox API
 async function getLowestAsk(assetId) {
   const url = `https://economy.roblox.com/v2/assets/${assetId}/resellers?sortOrder=Asc&limit=1`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} for asset ${assetId}`);
   const { data } = await res.json();
-  // data is an array of resellers; first entry has the lowest ask
   return (data[0] && typeof data[0].price === "number") 
     ? data[0].price 
     : null;
 }
 
 async function main() {
+  // 1) Read existing IDs from assetPrices.json
   const filePath = path.join(__dirname, "./assetPrices.json");
-  const raw = fs.readFileSync(filePath, "utf8");
-  const ids = Object.keys(JSON.parse(raw));
+  const raw      = fs.readFileSync(filePath, "utf8");
+  const ids      = Object.keys(JSON.parse(raw));
 
+  // 2) Query each ID and build updated map
   const prices = {};
   for (const id of ids) {
     try {
@@ -33,11 +34,11 @@ async function main() {
     } catch (err) {
       console.error(`❌ Failed ${id}: ${err.message}`);
     }
-    // throttle a bit to avoid hammering the API
+    // throttle to avoid rate limits
     await new Promise(r => setTimeout(r, 200));
   }
 
-  // Sort keys so diffs stay clean
+  // 3) Sort keys and write back to JSON
   const out = {};
   Object.keys(prices)
     .sort((a, b) => +a - +b)
