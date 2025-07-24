@@ -30,5 +30,6 @@ jobs:
         with:
           author_name: github-actions
           author_email: github-actions@github.com
-          message: chore: update limited lowest-ask prices
+          # Wrap the commit message in quotes to escape the colon
+          message: "chore: update limited lowest-ask prices"
           push: true
