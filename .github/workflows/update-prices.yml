@@ -1,6 +1,8 @@
 name: Update Limited Prices
 
-# Run every hour and on manual trigger
+permissions:
+  contents: write
+
 on:
   schedule:
     - cron: '0 * * * *'
@@ -11,24 +13,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Check out code
       - uses: actions/checkout@v3
 
-      # 2) Install Node
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      # 3) Install dependencies
-      - run: npm ci
+      - name: Install dependencies
+        run: npm install
 
-      # 4) Run the updater script
-      - run: node scripts/updatePrices.js
+      - name: Run price updater
+        run: node updatePrices.js
 
-      # 5) Commit & push changes if any
-      - uses: EndBug/add-and-commit@v9
+      - name: Commit & push changes
+        uses: EndBug/add-and-commit@v9
         with:
           author_name: github-actions
           author_email: github-actions@github.com
-          message: "chore: update limited lowest-ask prices"
+          message: chore: update limited lowest-ask prices
           push: true
