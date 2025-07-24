@@ -1,50 +1,32 @@
 // updatePrices.js
-const fs    = require("fs");
-const path  = require("path");
-const fetch = require("node-fetch"); // if you’re on Node18+, you can drop this and use global fetch
+import fs from "fs/promises";
+import fetch from "node-fetch";
 
-// Fetch lowest‐ask via Roblox Economy API v2
-async function getLowestAsk(assetId) {
-  const url = `https://economy.roblox.com/v2/assets/${assetId}/resellers?sortOrder=Asc&limit=1`;
+const ECON_BASE   = "https://economy.roblox.com/v1/assets";
+const ASSET_FILE  = "assetPrices.json";
+
+async function fetchPrice(id) {
+  const url = `${ECON_BASE}/${id}/resellers?limit=1&sortOrder=Asc`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status} for asset ${assetId}`);
+  if (!res.ok) {
+    console.error(`⨯ Failed to fetch price for ${id}`, res.status);
+    return 0;
+  }
   const { data } = await res.json();
-  // data is an array of listings; the first is the cheapest
-  return (data[0] && typeof data[0].price === "number") ? data[0].price : null;
+  return data?.[0]?.price || 0;
 }
 
-async function main() {
-  const filePath = path.join(__dirname, "assetPrices.json");
-  const raw      = fs.readFileSync(filePath, "utf8");
-  const obj      = JSON.parse(raw);
+(async () => {
+  const raw    = await fs.readFile(ASSET_FILE, "utf-8");
+  const prices = JSON.parse(raw);
+  const ids    = Object.keys(prices);
 
-  const updated = {};
-  for (const id of Object.keys(obj)) {
-    try {
-      const price = await getLowestAsk(id);
-      if (price !== null) {
-        updated[id] = price;
-        console.log(`✔️  ${id} → ${price}`);
-      } else {
-        console.log(`⚠️  ${id} has no active listings`);
-      }
-    } catch (err) {
-      console.error(`❌ Failed ${id}: ${err.message}`);
-    }
-    // throttle between requests to avoid rate‐limit issues
-    await new Promise(r => setTimeout(r, 200));
+  for (const id of ids) {
+    const price = await fetchPrice(id);
+    prices[id] = price;
+    console.log(`→ ${id}: ${price}`);
   }
 
-  // sort keys for clean diffs
-  const out = {};
-  Object.keys(updated).sort((a, b) => +a - +b)
-    .forEach(key => { out[key] = updated[key]; });
-
-  fs.writeFileSync(filePath, JSON.stringify(out, null, 2));
-  console.log(`\nWrote ${Object.keys(out).length} entries to assetPrices.json`);
-}
-
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+  await fs.writeFile(ASSET_FILE, JSON.stringify(prices, null, 2));
+  console.log(`✅ Updated prices for ${ids.length} items`);
+})();

@@ -1,7 +1,14 @@
 {
-  "name": "limited-price-updater",
+  "name": "LimitedVal",
   "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "extract":      "node extractIDs.js",
+    "update":       "node updatePrices.js",
+    "fetch:limited":"node fetchLimitedWithPrices.js"
+  },
   "dependencies": {
-    "node-fetch": "^2.6.7"
+    "node-fetch": "^3.3.2",
+    "p-limit":    "^4.0.0"
   }
 }
