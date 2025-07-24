@@ -1,37 +1,38 @@
+# .github/workflows/update-prices.yml
 name: Refresh Limited IDs & Prices
-
-permissions:
-  contents: write
 
 on:
   schedule:
-    - cron: '0 0 * * *'    # daily at midnight UTC
+    - cron: '0 0 * * *'   # daily UTC midnight
   workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Install dependencies
+      - name: Install fetch
         run: npm install node-fetch@2
 
-      - name: Seed limited IDs from Rolimons
+      - name: Seed Limited IDs
         run: node extractIDs.js
 
-      - name: Fetch latest lowest‐ask prices
+      - name: Update Prices
         run: node updatePrices.js
 
-      - name: Commit & push changes
+      - name: Commit & Push
         uses: EndBug/add-and-commit@v9
         with:
           author_name: github-actions
           author_email: github-actions@github.com
-          message: "chore: seed IDs & update lowest‐ask prices"
+          message: "chore: seed IDs & update prices"
           push: true
