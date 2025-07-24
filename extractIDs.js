@@ -1,49 +1,55 @@
 // extractIDs.js
-// Fetch every Limited item ID directly from Roblox’s v2 browse endpoint.
-// Writes them as keys (value=0) into assetPrices.json
+// Fetches every Limited item ID via Roblox’s v1 search API
+// Writes them as keys (value = 0) into assetPrices.json
 
-const fs    = require("fs");
+const fs = require("fs");
 const fetch = require("node-fetch"); // npm install node-fetch@2
 
-const BASE_URL = "https://catalog.roblox.com/v2/browse/limited-items";
-const PAGE_SIZE = 100;
+// Pause between requests to be polite
+const sleep = ms => new Promise(res => setTimeout(res, ms));
 
-async function fetchAllLimitedIds() {
-  const seeded = {};
-  let cursor = null;
+async function fetchPage(cursor) {
+  // These params are all required to avoid 400s
+  const params = new URLSearchParams({
+    Category:        "12",   // 12 = Limited items
+    Keyword:         "",     // must be present
+    CreatorType:     "All",  // must be present
+    CreatorTargetId: "0",    // must be present (0 = no filter)
+    SortType:        "2",    // 2 = most recently updated first (arbitrary)
+    Limit:           "100"   // max per page
+  });
+  if (cursor) params.set("Cursor", cursor);
 
-  do {
-    // Build URL with pagination
-    const params = new URLSearchParams({ limit: PAGE_SIZE.toString() });
-    if (cursor) params.set("cursor", cursor);
+  const url = `https://catalog.roblox.com/v1/search/items/details?${params}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Catalog v1 HTTP ${res.status}`);
 
-    const url = `${BASE_URL}?${params}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`Roblox browse/limited-items HTTP ${res.status}`);
-    }
-
-    const json = await res.json();
-    const items = Array.isArray(json.data) ? json.data : [];
-    if (items.length === 0) break;
-
-    // Seed each assetId
-    for (const itm of items) {
-      seeded[itm.assetId] = 0;
-    }
-
-    console.log(`→ Fetched ${items.length} IDs; next cursor = ${json.nextPageCursor}`);
-    cursor = json.nextPageCursor;
-  } while (cursor);
-
-  return seeded;
+  return await res.json();  // { data: [...], nextPageCursor: "..." }
 }
 
 (async () => {
   try {
-    const allIds = await fetchAllLimitedIds();
-    fs.writeFileSync("assetPrices.json", JSON.stringify(allIds, null, 2));
-    console.log(`✅ Seeded ${Object.keys(allIds).length} limited IDs`);
+    let allIds = {};
+    let cursor = null;
+    let page  = 1;
+
+    do {
+      const { data, nextPageCursor } = await fetchPage(cursor);
+      console.log(`→ Page ${page}: fetched ${data.length} items`);
+      data.forEach(item => {
+        allIds[item.id] = 0;
+      });
+      cursor = nextPageCursor;
+      page++;
+      await sleep(200);
+    } while (cursor);
+
+    // Write to JSON
+    fs.writeFileSync(
+      "assetPrices.json",
+      JSON.stringify(allIds, null, 2)
+    );
+    console.log(`✅ Seeded ${Object.keys(allIds).length} Limited IDs`);
   } catch (err) {
     console.error("❌", err.message);
     process.exit(1);
