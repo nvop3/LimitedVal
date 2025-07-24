@@ -5,8 +5,8 @@ permissions:
 
 on:
   schedule:
-    - cron: '0 * * * *'     # runs every hour
-  workflow_dispatch:       # manual trigger
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   update:
@@ -22,7 +22,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run price updater
+      - name: Extract Limited IDs
+        run: node extractIDs.js
+
+      - name: Update Lowest-Asks
         run: node updatePrices.js
 
       - name: Commit & push changes
@@ -30,5 +33,5 @@ jobs:
         with:
           author_name: github-actions
           author_email: github-actions@github.com
-          message: "chore: update lowest-ask prices via Roblox API"
+          message: "chore: refresh assetPrices.json with latest lows"
           push: true
