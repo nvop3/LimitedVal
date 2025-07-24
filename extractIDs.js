@@ -2,45 +2,42 @@
 const fs    = require("fs");
 const fetch = require("node-fetch");
 
-async function fetchLimitedsPage() {
-  const res = await fetch("https://www.rolimons.com/limiteds", {
-    headers: { "User-Agent": "Mozilla/5.0 (Windows NT)" }
-  });
-  if (!res.ok) throw new Error(`Page HTTP ${res.status}`);
-  return await res.text();
-}
+async function fetchLimitedAssetIds() {
+  const seeded = {};
+  let cursor      = "";
+  const limit     = 100;
 
-function parseNuxtState(html) {
-  // window.__NUXT__ = { state: { items: { limiteds: [...] }, ... }, ... };
-  const match = html.match(/window\.__NUXT__\s*=\s*(\{.+?\});/s);
-  if (!match) throw new Error("Could not find Nuxt state in HTML");
-  const nuxt = JSON.parse(match[1]);
-  if (
-    !nuxt.state ||
-    !nuxt.state.items ||
-    !Array.isArray(nuxt.state.items.limiteds)
-  ) {
-    throw new Error("Unexpected Nuxt state shape");
-  }
-  return nuxt.state.items.limiteds;
+  do {
+    const base = `https://catalog.roblox.com/v1/search/items/details?Category=12`
+               + `&Limit=${limit}&SortType=3`;
+    const url  = cursor ? `${base}&Cursor=${encodeURIComponent(cursor)}` : base;
+
+    const res  = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Roblox Catalog HTTP ${res.status}`);
+    }
+
+    const json = await res.json();
+    const items = Array.isArray(json.data) ? json.data : [];
+    items.forEach(item => {
+      seeded[item.id] = 0;
+    });
+
+    console.log(`Fetched ${items.length} items; next cursor = ${json.nextPageCursor}`);
+    cursor = json.nextPageCursor;
+  } while (cursor);
+
+  return seeded;
 }
 
 async function main() {
   try {
-    const html     = await fetchLimitedsPage();
-    const items    = parseNuxtState(html);
-    const seeded   = items.reduce((acc, item) => {
-      // item.assetId is the numeric ID
-      acc[item.assetId] = 0;
-      return acc;
-    }, {});
-
+    const allIds = await fetchLimitedAssetIds();
     fs.writeFileSync(
-      "./assetPrices.json",
-      JSON.stringify(seeded, null, 2)
+      "assetPrices.json",
+      JSON.stringify(allIds, null, 2)
     );
-
-    console.log(`✅ Seeded ${items.length} limited IDs`);
+    console.log(`✅ Seeded ${Object.keys(allIds).length} limited IDs`);
   } catch (err) {
     console.error("❌", err.message);
     process.exit(1);
