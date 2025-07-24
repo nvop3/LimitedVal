@@ -1,6 +1,5 @@
 // extractIDs.js
-// Fetches ALL Limited item IDs from Roblox’s Catalog API (Category=12)
-// and writes them as keys to assetPrices.json with value 0.
+// Fetches EVERY Limited item ID directly from Roblox’s Catalog API (Category=12)
 
 const fs    = require("fs");
 const fetch = require("node-fetch"); // npm install node-fetch@2
@@ -11,24 +10,19 @@ async function fetchAllLimitedIds() {
   const limit = 100;
 
   do {
-    // Build query params
     const params = new URLSearchParams({
-      Category: "12",              // Category 12 == Limited items
+      Category: "12",              // Category 12 == Limited
       Limit:    limit.toString(),
-      SortType: "3"                // Sort by recent average price desc
+      SortType: "3"                // sort by recent avg price desc
     });
     if (cursor) params.set("Cursor", cursor);
 
     const url = `https://catalog.roblox.com/v1/search/items/details?${params}`;
     const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`Roblox Catalog HTTP ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`Roblox Catalog HTTP ${res.status}`);
 
     const json  = await res.json();
     const items = Array.isArray(json.data) ? json.data : [];
-
-    // Seed each asset ID
     items.forEach(item => {
       seeded[item.id] = 0;
     });
@@ -43,10 +37,7 @@ async function fetchAllLimitedIds() {
 (async () => {
   try {
     const allIds = await fetchAllLimitedIds();
-    fs.writeFileSync(
-      "assetPrices.json",
-      JSON.stringify(allIds, null, 2)
-    );
+    fs.writeFileSync("assetPrices.json", JSON.stringify(allIds, null, 2));
     console.log(`✅ Seeded ${Object.keys(allIds).length} limited IDs`);
   } catch (err) {
     console.error("❌", err.message);
