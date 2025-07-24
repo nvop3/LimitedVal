@@ -3,24 +3,26 @@ const fs    = require("fs");
 const fetch = require("node-fetch");
 
 async function main() {
-  // 1) Fetch limited list from Rolimons
-  const resp = await fetch("https://api.rolimons.com/limiteds/get-data");
-  if (!resp.ok) throw new Error(`Rolimons HTTP ${resp.status}`);
-  const { data } = await resp.json(); // [ [id, name, lowestAsk, ...], ... ]
+  const url = "https://www.rolimons.com/itemapi/limited"; 
+  // this endpoint returns all limiteds with fields: assetid, name, price, etc.
 
-  // 2) Build JSON object with IDs as keys and 0 as placeholder
-  const obj = {};
-  data.forEach(row => {
-    const id = row[0];
-    obj[id] = 0;
-  });
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Rolimons HTTP ${res.status}`);
+  const { Items } = await res.json(); 
+  if (!Array.isArray(Items)) throw new Error("Unexpected payload");
 
-  // 3) Write to assetPrices.json
+  // build an object { [assetId]: 0, ... }
+  const seeded = Items.reduce((acc, item) => {
+    acc[item.assetid] = 0;
+    return acc;
+  }, {});
+
   fs.writeFileSync(
     "./assetPrices.json",
-    JSON.stringify(obj, null, 2)
+    JSON.stringify(seeded, null, 2)
   );
-  console.log(`Populated ${data.length} IDs into assetPrices.json`);
+
+  console.log(`Extracted and seeded ${Items.length} limited IDs`);
 }
 
 main().catch(err => {
