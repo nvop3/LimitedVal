@@ -1,48 +1,44 @@
 // updatePrices.js
 const fs    = require("fs");
 const path  = require("path");
-const fetch = require("node-fetch");
+const fetch = require("node-fetch"); // if you’re on Node18+, you can drop this and use global fetch
 
-// Fetch the lowest ask price for a single asset from Roblox API
+// Fetch lowest‐ask via Roblox Economy API v2
 async function getLowestAsk(assetId) {
   const url = `https://economy.roblox.com/v2/assets/${assetId}/resellers?sortOrder=Asc&limit=1`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} for asset ${assetId}`);
   const { data } = await res.json();
-  return (data[0] && typeof data[0].price === "number") 
-    ? data[0].price 
-    : null;
+  // data is an array of listings; the first is the cheapest
+  return (data[0] && typeof data[0].price === "number") ? data[0].price : null;
 }
 
 async function main() {
-  // 1) Read existing IDs from assetPrices.json
-  const filePath = path.join(__dirname, "./assetPrices.json");
+  const filePath = path.join(__dirname, "assetPrices.json");
   const raw      = fs.readFileSync(filePath, "utf8");
-  const ids      = Object.keys(JSON.parse(raw));
+  const obj      = JSON.parse(raw);
 
-  // 2) Query each ID and build updated map
-  const prices = {};
-  for (const id of ids) {
+  const updated = {};
+  for (const id of Object.keys(obj)) {
     try {
-      const p = await getLowestAsk(id);
-      if (p !== null) {
-        prices[id] = p;
-        console.log(`✔️  ${id} → ${p}`);
+      const price = await getLowestAsk(id);
+      if (price !== null) {
+        updated[id] = price;
+        console.log(`✔️  ${id} → ${price}`);
       } else {
         console.log(`⚠️  ${id} has no active listings`);
       }
     } catch (err) {
       console.error(`❌ Failed ${id}: ${err.message}`);
     }
-    // throttle to avoid rate limits
+    // throttle between requests to avoid rate‐limit issues
     await new Promise(r => setTimeout(r, 200));
   }
 
-  // 3) Sort keys and write back to JSON
+  // sort keys for clean diffs
   const out = {};
-  Object.keys(prices)
-    .sort((a, b) => +a - +b)
-    .forEach(key => { out[key] = prices[key]; });
+  Object.keys(updated).sort((a, b) => +a - +b)
+    .forEach(key => { out[key] = updated[key]; });
 
   fs.writeFileSync(filePath, JSON.stringify(out, null, 2));
   console.log(`\nWrote ${Object.keys(out).length} entries to assetPrices.json`);
