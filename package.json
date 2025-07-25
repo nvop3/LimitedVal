@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "extract":      "node extractIDs.js",
-    "update":       "node updatePrices.js",
-    "fetch:limited":"node fetchLimitedWithPrices.js"
+    "extract": "node extractIDs.js",
+    "update": "node updatePrices.js",
+    "fetch:limited": "node fetchLimitedWithPrices.js"
   },
   "dependencies": {
-    "node-fetch": "^3.3.2",
-    "p-limit":    "^4.0.0"
+    "node-fetch": "^2.7.0",
+    "p-limit": "^4.0.0"
   }
 }
